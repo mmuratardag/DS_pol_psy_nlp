@@ -26,7 +26,36 @@ tokens_sel <- udp_anno[upos %in% c("NOUN","PROPN","ADJ","VERB"),
 dfm_sel <- tokens_sel %>% dfm(tolower = FALSE)
 word_freqs <- dfm_sel %>% textstat_frequency %>% as.data.table %>% setorder(-frequency) 
 
-source("flexionsf.R")
+flexionsf <- function(words,d){ 
+  tokdist <- stringdist::stringdistmatrix(words,method="jw",nthread=ncores) %>% 
+    as.matrix %>% Matrix::forceSymmetric(., uplo="U")
+  rownames(tokdist) <- words
+  colnames(tokdist) <- words
+  tokdist <- tokdist[grepl("^[[:lower:]]", rownames(tokdist)),] 
+  cnslc <- tolower(colnames(tokdist))
+  nchars <- nchar(colnames(tokdist))
+  spldf <- split(tokdist %>% as.matrix %>% as.data.frame, seq(1, nrow(tokdist),
+                                                              by = floor(nrow(tokdist)/(ncores-1))))
+  plan(multisession)
+  temp <- future.apply::future_lapply(spldf, function(x) {
+    lapply(rownames(x), function(w) { 
+      selector <- unname(
+        (x[w,] < d | w == cnslc | paste0(w,"s") == cnslc | paste0(w,"x") == cnslc) & 
+          nchar(w) <= nchars
+      )
+      if ( length(selector[selector]) > 1 ) {
+        return(colnames(x)[selector])
+      } else {
+        return(NULL)
+      }
+    })
+  }) %>% unlist(recursive=FALSE)
+  future:::ClusterRegistry("stop")
+  temp <- temp[!sapply(temp, is.null)]
+  names(temp) <- sapply(temp,function(i) i[1])
+  temp <- temp[grepl("^[[:lower:]]", names(temp))] 
+  lapply(temp, function(i) i[-1]) 
+}
 
 flexions_list <- flexionsf(word_freqs$feature, 0.04)
 flexions_dict <- flexions_list %>% dictionary(tolower = FALSE)
