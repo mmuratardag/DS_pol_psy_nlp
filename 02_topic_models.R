@@ -66,16 +66,10 @@ tm_df_mwe$term <- txt_recode_ngram(tm_df_mwe$term,
                                    compound = kw_rake$keyword,
                                    ngram = kw_rake$ngram)
 
-tm_df_mwe$term <- ifelse(tm_df_mwe$upos %in% "NOUN", tm_df_mwe$term,
-                         ifelse(tm_df_mwe$term %in% c(kw_rake$keyword,
-                                                      kw_rake$keyword),
-                               tm_df_mwe$term, NA))
-
-
 dtm <- document_term_frequencies(tm_df_mwe, document = "topic_level_id",
                                  term = "term")
 dtm <- document_term_matrix(x = dtm)
-dtm <- dtm_remove_terms(dtm, terms = c(dtm@Dimnames[[2]][1:51]))
+dtm <- dtm_remove_terms(dtm, terms = c(dtm@Dimnames[[2]][1:94]))
 
 tm_mwe_rsl <- FindTopicsNumber(dtm, topics = seq(from = 4, to = 25, by = 1),
                                metrics = c("Griffiths2004", "CaoJuan2009",
@@ -97,7 +91,7 @@ docs_withSplit <- keyATM_read(texts = quanteda_dfm,
                               split = 0.3)
 
 out <- weightedLDA(docs = docs_withSplit$W_split,
-                   number_of_topics = 10,
+                   number_of_topics = 12,
                    model = "base",
                    options = list(seed = 666))
 
@@ -107,9 +101,11 @@ keywords <- list(genial = c("political", "social", "psychology", "issue",
                             "paper", "article", "Research", "Previous research",
                             "Reviewers", "analysis", "question", "Effects",
                             "empirical", "political psychology", "work",
-                            "question*", "studies", "research", "model"),
+                            "question*", "studies", "research", "model",
+                            "survey", "Abstract"),
                  personality = c("personality", "Personality",
-                                 "individual differenc*", "individual*"),
+                                 "individual differences", "individual",
+                                 "personality traits"),
                  leadership = c("operational codes", "integrative complexity",
                                 "leadership", "political interviews",
                                 "leader"), 
@@ -119,7 +115,7 @@ keywords <- list(genial = c("political", "social", "psychology", "issue",
                                 "social dominance orientation", "RWA"),
                  intergroup = c("Identity", "intergroup", "group*", "identit*",
                                 "intergroup conflict", "prejudice",
-                                "social identit*", "national identity",
+                                "social identity", "national identity",
                                 "majority", "minority", 
                                 "conflict"),
                  prejudice = c("race relations", "Islamophobia", "immigrants",
@@ -134,13 +130,15 @@ keywords <- list(genial = c("political", "social", "psychology", "issue",
                  att_beh = c("political behavior", "political attitudes"),
                  political_soc = c("political socialization", "social capital"),
                  emo_sent = c("emotions", "Emotions", "Shame", "sadness", "emotional reactions",
-                              "sentiments"), 
+                              "sentiments", "affective polarization"), 
                  val_mor = c("cultural", "justice", "social", "Representations",
-                             "moral", "foundations", "Social representations"), 
+                             "moral", "foundations", "Social representations",
+                             "Values"), 
                  rational_cho = c("prospect theory"),
                  collective_act = c("collective action", "social change",
                                     "civic engagement", "Change",
-                                    "social movements", "Activism"),
+                                    "social movements", "Activism",
+                                    "movement", "Movement"),
                  political_comm = c("social", "influence", "persuasion"),
                  pol_participation = c("participation", "democr*",
                                        "political participation"),
@@ -148,7 +146,7 @@ keywords <- list(genial = c("political", "social", "psychology", "issue",
                  conflict_res = c("intractable conflict", "reconciliation"),
                  cnt_lct_cs = c("Barack Obama", "US", "American", "Europe",
                                 "EU", "European Union", "Netherlands", "Turkey",
-                                "Northern Ireland", "Chile", "Rwanda"),
+                                "Northern Ireland", "Chile", "Rwanda", "Kurdish"),
                  conspiracy_the = c("belief*", "conspiracy theories",
                                     "conspiracy beliefs"),
                  sec_ter_ir = c("security", "terror", "Terror", "war", "threat",
@@ -157,13 +155,11 @@ keywords <- list(genial = c("political", "social", "psychology", "issue",
 
 visualize_keywords(docs = keyATM_docs, keywords = keywords)
 
-ss_out <- keyATM(docs = keyATM_docs, no_keyword_topics = 5,
+ss_out <- keyATM(docs = keyATM_docs, no_keyword_topics = 2,
                  keywords = keywords, model = "base",
                  options = list(seed = 666))
 
 top_words(ss_out, n = 20)
-
-tidy(ss_out)
 
 plot_modelfit(ss_out)
 plot_alpha(ss_out)
@@ -171,10 +167,4 @@ pp <- plot_pi(ss_out)
 pp$values %>% ggplot(aes(x = Topic, y = Probability)) +
   geom_col() + 
   labs(title = "Probability of words drawn from keyword topic-word distribution") +
-  coord_flip() + theme_bw()
-
-pp$values %>% ggplot(aes(x = Topic, y = count)) +
-  geom_col() + 
-  labs(title = "Topic Count",
-       caption = "3543 n-grams are extracted from 1382 truncated abstracts") +
   coord_flip() + theme_bw()
